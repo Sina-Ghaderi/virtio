@@ -30,7 +30,7 @@ func TestFlagAndGsoTypeConstants(t *testing.T) {
 }
 
 func rawVnetHdrBytes(flags, gsoType uint8, hdrLen, gsoSize, csumStart, csumOffset uint16) []byte {
-	b := make([]byte, NetHdrLen)
+	b := make([]byte, VirtioNetHdrLen)
 	b[0] = flags
 	b[1] = gsoType
 	binary.NativeEndian.PutUint16(b[2:4], hdrLen)
@@ -43,7 +43,7 @@ func rawVnetHdrBytes(flags, gsoType uint8, hdrLen, gsoSize, csumStart, csumOffse
 func TestDecode_FieldByteOffsets(t *testing.T) {
 	raw := rawVnetHdrBytes(0x1, 0x4, 0x1234, 0x5678, 0x9abc, 0xdef0)
 
-	var v NetHdr
+	var v VirtioNetHdr
 	if err := v.Decode(raw); err != nil {
 		t.Fatalf("Decode: unexpected error: %v", err)
 	}
@@ -65,7 +65,7 @@ func TestDecode_FieldByteOffsets(t *testing.T) {
 }
 
 func TestEncode_FieldByteOffsets(t *testing.T) {
-	v := NetHdr{
+	v := VirtioNetHdr{
 		Flags:      0x2,
 		GsoType:    0x5,
 		HdrLen:     0x1111,
@@ -74,7 +74,7 @@ func TestEncode_FieldByteOffsets(t *testing.T) {
 		CsumOffset: 0x4444,
 	}
 
-	got := make([]byte, NetHdrLen)
+	got := make([]byte, VirtioNetHdrLen)
 	if err := v.Encode(got); err != nil {
 		t.Fatalf("Encode: unexpected error: %v", err)
 	}
@@ -93,7 +93,7 @@ func TestDecodeEncode_Symmetric(t *testing.T) {
 	extremes := []uint16{0, 1, 0xff, 0x100, 0x7fff, 0x8000, 0xfffe, 0xffff}
 
 	for i := 0; i < 500; i++ {
-		var v NetHdr
+		var v VirtioNetHdr
 		v.Flags = uint8(rng.Intn(256))
 		v.GsoType = uint8(rng.Intn(256))
 		if i < len(extremes)*4 {
@@ -109,12 +109,12 @@ func TestDecodeEncode_Symmetric(t *testing.T) {
 			v.CsumOffset = uint16(rng.Intn(65536))
 		}
 
-		buf := make([]byte, NetHdrLen)
+		buf := make([]byte, VirtioNetHdrLen)
 		if err := v.Encode(buf); err != nil {
 			t.Fatalf("iter %d: Encode: %v", i, err)
 		}
 
-		var got NetHdr
+		var got VirtioNetHdr
 		if err := got.Decode(buf); err != nil {
 			t.Fatalf("iter %d: Decode: %v", i, err)
 		}
@@ -126,18 +126,18 @@ func TestDecodeEncode_Symmetric(t *testing.T) {
 }
 
 func TestDecode_ShortBuffer(t *testing.T) {
-	for n := 0; n < NetHdrLen; n++ {
+	for n := 0; n < VirtioNetHdrLen; n++ {
 		n := n
 		t.Run("", func(t *testing.T) {
 			b := make([]byte, n)
-			sentinel := NetHdr{Flags: 0xaa, GsoType: 0xbb, HdrLen: 0xcccc,
+			sentinel := VirtioNetHdr{Flags: 0xaa, GsoType: 0xbb, HdrLen: 0xcccc,
 				GsoSize: 0xdddd, CsumStart: 0xeeee, CsumOffset: 0xffff}
 			v := sentinel
 
 			err := v.Decode(b)
-			if err == nil || err.Error() != "short nethdr buffer length" {
+			if err == nil || err.Error() != "short virtio nethdr buffer length" {
 				t.Fatalf("len(b)=%d: err = %v, want "+
-					"'short nethdr buffer length'", n, err)
+					"'short virtio nethdr buffer length'", n, err)
 			}
 			if v != sentinel {
 				t.Fatalf(
@@ -147,17 +147,17 @@ func TestDecode_ShortBuffer(t *testing.T) {
 		})
 	}
 
-	b := make([]byte, NetHdrLen)
-	var v NetHdr
+	b := make([]byte, VirtioNetHdrLen)
+	var v VirtioNetHdr
 	if err := v.Decode(b); err != nil {
-		t.Fatalf("len(b)=NetHdrLen: unexpected error: %v", err)
+		t.Fatalf("len(b)=VirtioNetHdrLen: unexpected error: %v", err)
 	}
 }
 
 func TestEncode_ShortBuffer(t *testing.T) {
-	v := NetHdr{Flags: 1, GsoType: 1, HdrLen: 40, GsoSize: 1440, CsumStart: 20, CsumOffset: 16}
+	v := VirtioNetHdr{Flags: 1, GsoType: 1, HdrLen: 40, GsoSize: 1440, CsumStart: 20, CsumOffset: 16}
 
-	for n := 0; n < NetHdrLen; n++ {
+	for n := 0; n < VirtioNetHdrLen; n++ {
 		n := n
 		t.Run("", func(t *testing.T) {
 			b := make([]byte, n)
@@ -165,8 +165,8 @@ func TestEncode_ShortBuffer(t *testing.T) {
 				b[i] = 0x5a
 			}
 			err := v.Encode(b)
-			if err == nil || err.Error() != "short nethdr buffer length" {
-				t.Fatalf("len(b)=%d: err = %v, want short nethdr buffer length", n, err)
+			if err == nil || err.Error() != "short virtio nethdr buffer length" {
+				t.Fatalf("len(b)=%d: err = %v, want short virtio nethdr buffer length", n, err)
 			}
 			for i, x := range b {
 				if x != 0x5a {
@@ -183,34 +183,34 @@ func TestDecode_IgnoresTrailingBytes(t *testing.T) {
 	trailer := []byte{0xde, 0xad, 0xbe, 0xef, 0x00, 0x11, 0x22}
 	full := append(append([]byte{}, raw...), trailer...)
 
-	var v NetHdr
+	var v VirtioNetHdr
 	if err := v.Decode(full); err != nil {
 		t.Fatalf("Decode: unexpected error: %v", err)
 	}
-	want := NetHdr{Flags: 1, GsoType: 1, HdrLen: 40, GsoSize: 1440, CsumStart: 20, CsumOffset: 16}
+	want := VirtioNetHdr{Flags: 1, GsoType: 1, HdrLen: 40, GsoSize: 1440, CsumStart: 20, CsumOffset: 16}
 	if v != want {
 		t.Fatalf("got %+v, want %+v", v, want)
 	}
 }
 
 func TestEncode_IgnoresTrailingCapacity(t *testing.T) {
-	v := NetHdr{Flags: 1, GsoType: 4, HdrLen: 60, GsoSize: 1220, CsumStart: 40, CsumOffset: 16}
+	v := VirtioNetHdr{Flags: 1, GsoType: 4, HdrLen: 60, GsoSize: 1220, CsumStart: 40, CsumOffset: 16}
 
-	buf := make([]byte, NetHdrLen+8)
-	for i := NetHdrLen; i < len(buf); i++ {
+	buf := make([]byte, VirtioNetHdrLen+8)
+	for i := VirtioNetHdrLen; i < len(buf); i++ {
 		buf[i] = 0x77
 	}
 	if err := v.Encode(buf); err != nil {
 		t.Fatalf("Encode: unexpected error: %v", err)
 	}
-	for i := NetHdrLen; i < len(buf); i++ {
+	for i := VirtioNetHdrLen; i < len(buf); i++ {
 		if buf[i] != 0x77 {
-			t.Fatalf("byte %d beyond NetHdrLen was touched: "+
+			t.Fatalf("byte %d beyond VirtioNetHdrLen was touched: "+
 				"got %#x, want untouched 0x77", i, buf[i])
 		}
 	}
 
-	var got NetHdr
+	var got VirtioNetHdr
 	if err := got.Decode(buf); err != nil {
 		t.Fatalf("Decode: unexpected error: %v", err)
 	}
@@ -220,16 +220,16 @@ func TestEncode_IgnoresTrailingCapacity(t *testing.T) {
 }
 
 func TestZeroValueRoundTrips(t *testing.T) {
-	buf := make([]byte, NetHdrLen)
-	var v NetHdr
+	buf := make([]byte, VirtioNetHdrLen)
+	var v VirtioNetHdr
 	if err := v.Decode(buf); err != nil {
 		t.Fatalf("Decode: %v", err)
 	}
-	if v != (NetHdr{}) {
+	if v != (VirtioNetHdr{}) {
 		t.Fatalf("got %+v, want zero value", v)
 	}
 
-	out := make([]byte, NetHdrLen)
+	out := make([]byte, VirtioNetHdrLen)
 	if err := v.Encode(out); err != nil {
 		t.Fatalf("Encode: %v", err)
 	}
