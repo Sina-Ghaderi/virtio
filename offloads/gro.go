@@ -1,16 +1,15 @@
 //go:build linux || android
 
-package offload
+package offloads
 
 import (
 	"bytes"
 	"encoding/binary"
 	"os"
 
-	"github.com/sina-ghaderi/subpass/internal/checksum"
-	"github.com/sina-ghaderi/subpass/internal/virtio"
-
-	"github.com/sina-ghaderi/subpass/tcpip"
+	"github.com/sina-ghaderi/tcpip"
+	"github.com/sina-ghaderi/tcpip/checksum"
+	"github.com/sina-ghaderi/virtio/net"
 )
 
 type groStatus int
@@ -504,12 +503,12 @@ func (t *flowTable) coalescePacket(pkt packet, id packetID, mode canCoalesce) co
 
 func (p *VirtioGro) Send(f *os.File, b []byte) (n int, err error) {
 
-	const maxHdrLen = virtio.NetHdrLen +
+	const maxHdrLen = net.VirtioNetHdrLen +
 		tcpip.MaxIPv4HdrLen + tcpip.MaxTCPHdrLen
 
 	unchecked := b
 	hdrbuf := make([]byte, maxHdrLen)
-	vnthdr := hdrbuf[:virtio.NetHdrLen]
+	vnthdr := hdrbuf[:net.VirtioNetHdrLen]
 
 	defer p.table.resetFlowTable()
 
@@ -574,7 +573,7 @@ func (p *VirtioGro) Send(f *os.File, b []byte) (n int, err error) {
 
 func (t *flowTable) prepareMegaPacket(mega megaPacket, buf []byte) []byte {
 
-	const nethdrLen = virtio.NetHdrLen
+	const nethdrLen = net.VirtioNetHdrLen
 
 	hdr := buf[:nethdrLen]
 	header := buf[nethdrLen : nethdrLen+len(mega.header)]
@@ -584,8 +583,8 @@ func (t *flowTable) prepareMegaPacket(mega megaPacket, buf []byte) []byte {
 		return mega.header
 	}
 
-	hdrInfo := &virtio.NetHdr{
-		Flags:      virtio.VirtioNetHdrNeedsCSUM,
+	hdrInfo := &net.VirtioNetHdr{
+		Flags:      net.VirtioNetHdrNeedsCSUM,
 		HdrLen:     uint16(mega.iphlen + mega.trhlen),
 		GsoSize:    mega.gsosize,
 		CsumStart:  uint16(mega.iphlen),
@@ -598,7 +597,7 @@ func (t *flowTable) prepareMegaPacket(mega megaPacket, buf []byte) []byte {
 
 	switch mega.version {
 	case tcpip.IPv6:
-		hdrInfo.GsoType = virtio.VirtioNetHdrGsoTCPV6
+		hdrInfo.GsoType = net.VirtioNetHdrGsoTCPV6
 
 		iph := tcpip.IPv6Header(header)
 		payloadLen := mega.datalen + len(header) - int(mega.iphlen)
@@ -607,7 +606,7 @@ func (t *flowTable) prepareMegaPacket(mega megaPacket, buf []byte) []byte {
 		dst = iph.DstAddr()
 
 	case tcpip.IPv4:
-		hdrInfo.GsoType = virtio.VirtioNetHdrGsoTCPV4
+		hdrInfo.GsoType = net.VirtioNetHdrGsoTCPV4
 		iph := tcpip.IPv4Header(header)
 		iph.SetChecksum(0)
 		totalLen := mega.datalen + len(header)
@@ -630,7 +629,7 @@ func (t *flowTable) prepareMegaPacket(mega megaPacket, buf []byte) []byte {
 
 	} else {
 		hdrInfo.CsumOffset = 6
-		hdrInfo.GsoType = virtio.VirtioNetHdrGsoUDPL4
+		hdrInfo.GsoType = net.VirtioNetHdrGsoUDPL4
 		psum := checksum.HeaderChecksumNoFold(mega.proto, src, dst, slen)
 		udph := tcpip.UDPHeader(segment)
 		udph.SetChecksum(checksum.Checksum(nil, psum))

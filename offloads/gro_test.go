@@ -1,15 +1,15 @@
 //go:build linux || android
 
-package offload
+package offloads
 
 import (
 	"encoding/binary"
 	"os"
 	"testing"
 
-	"github.com/sina-ghaderi/subpass/internal/checksum"
-	"github.com/sina-ghaderi/subpass/internal/virtio"
-	"github.com/sina-ghaderi/subpass/tcpip"
+	"github.com/sina-ghaderi/tcpip"
+	"github.com/sina-ghaderi/tcpip/checksum"
+	"github.com/sina-ghaderi/virtio/net"
 )
 
 // Helper functions to construct packets for testing
@@ -482,9 +482,9 @@ func TestPrepareMegaPacket(t *testing.T) {
 			data:   [][]byte{[]byte("data1")}, // Only 1 segment
 		}
 
-		buf := make([]byte, virtio.NetHdrLen+len(header))
+		buf := make([]byte, net.VirtioNetHdrLen+len(header))
 		// Fill virtio net header area with garbage to ensure it gets cleared
-		for i := 0; i < virtio.NetHdrLen; i++ {
+		for i := 0; i < net.VirtioNetHdrLen; i++ {
 			buf[i] = 0xFF
 		}
 
@@ -492,7 +492,7 @@ func TestPrepareMegaPacket(t *testing.T) {
 		if string(res) != string(header) {
 			t.Fatal("expected original header to be returned")
 		}
-		for i := 0; i < virtio.NetHdrLen; i++ {
+		for i := 0; i < net.VirtioNetHdrLen; i++ {
 			if buf[i] != 0 {
 				t.Fatalf("expected virtio net header to be cleared, found %X at index %d", buf[i], i)
 			}
@@ -515,7 +515,7 @@ func TestPrepareMegaPacket(t *testing.T) {
 			flags:   tcpip.TCPFlagACK | tcpip.TCPFlagPSH,
 		}
 
-		buf := make([]byte, virtio.NetHdrLen+len(header))
+		buf := make([]byte, net.VirtioNetHdrLen+len(header))
 		res := ft.prepareMegaPacket(mega, buf)
 
 		if len(res) != 40 {
@@ -554,7 +554,7 @@ func TestPrepareMegaPacket(t *testing.T) {
 			flags:   tcpip.TCPFlagACK,
 		}
 
-		buf := make([]byte, virtio.NetHdrLen+len(header))
+		buf := make([]byte, net.VirtioNetHdrLen+len(header))
 		res := ft.prepareMegaPacket(mega, buf)
 
 		iph := tcpip.IPv6Header(res)
@@ -578,7 +578,7 @@ func TestPrepareMegaPacket(t *testing.T) {
 			proto:   tcpip.ProtoUDP,
 		}
 
-		buf := make([]byte, virtio.NetHdrLen+len(header))
+		buf := make([]byte, net.VirtioNetHdrLen+len(header))
 		_ = ft.prepareMegaPacket(mega, buf)
 
 		// Verification happens indirectly. The function shouldn't panic and

@@ -136,13 +136,11 @@ func TestDecode_ShortBuffer(t *testing.T) {
 
 			err := v.Decode(b)
 			if err == nil || err.Error() != "short virtio nethdr buffer length" {
-				t.Fatalf("len(b)=%d: err = %v, want "+
-					"'short virtio nethdr buffer length'", n, err)
+				t.Fatalf("len(b)=%d: err = %v, want 'short virtio nethdr buffer length'", n, err)
 			}
 			if v != sentinel {
 				t.Fatalf(
-					"len(b)=%d: struct mutated on short-buffer error: "+
-						" got %+v, want untouched %+v", n, v, sentinel)
+					"len(b)=%d: struct mutated on short-buffer error: got %+v, want untouched %+v", n, v, sentinel)
 			}
 		})
 	}
@@ -170,8 +168,7 @@ func TestEncode_ShortBuffer(t *testing.T) {
 			}
 			for i, x := range b {
 				if x != 0x5a {
-					t.Fatalf("len(b)=%d: byte %d mutated on "+
-						"short-buffer error: got %#x, want untouched 0x5a", n, i, x)
+					t.Fatalf("len(b)=%d: byte %d mutated on short-buffer error: got %#x, want untouched 0x5a", n, i, x)
 				}
 			}
 		})
@@ -205,8 +202,7 @@ func TestEncode_IgnoresTrailingCapacity(t *testing.T) {
 	}
 	for i := VirtioNetHdrLen; i < len(buf); i++ {
 		if buf[i] != 0x77 {
-			t.Fatalf("byte %d beyond VirtioNetHdrLen was touched: "+
-				"got %#x, want untouched 0x77", i, buf[i])
+			t.Fatalf("byte %d beyond VirtioNetHdrLen was touched: got %#x, want untouched 0x77", i, buf[i])
 		}
 	}
 

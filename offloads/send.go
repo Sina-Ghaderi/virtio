@@ -1,6 +1,6 @@
 //go:build linux || android
 
-package offload
+package offloads
 
 import (
 	"io"
