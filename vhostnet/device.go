@@ -280,8 +280,6 @@ func SetQueueBackend(controlFD int, queueIndex uint32, backendFD int) error {
 
 func (dev *Device) Close() error {
 
-	dev.ensureInitialized()
-
 	dev.initialized = false
 	if dev.controlFD >= 0 {
 		if err := unix.Close(dev.controlFD); err != nil {
