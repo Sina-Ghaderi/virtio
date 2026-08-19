@@ -280,15 +280,17 @@ func SetQueueBackend(controlFD int, queueIndex uint32, backendFD int) error {
 
 func (dev *Device) Close() error {
 
+	var errs []error
+
 	dev.initialized = false
 	if dev.controlFD >= 0 {
-		if err := unix.Close(dev.controlFD); err != nil {
-			return fmt.Errorf("close control file descriptor: %w", err)
+		err := unix.Close(dev.controlFD)
+		if err != nil {
+			errs = append(errs,
+				fmt.Errorf("close control file descriptor: %w", err))
 		}
 		dev.controlFD = -1
 	}
-
-	var errs []error
 
 	if dev.receiveQueue != nil {
 		if err := dev.receiveQueue.Close(); err == nil {
